@@ -28,4 +28,7 @@ A dynamic image gallery application built using Flutter, integrated with the [Pi
 - Flutter SDK installed ([Download Flutter](https://flutter.dev/docs/get-started/install))
 - A valid API key from [Pixabay](https://pixabay.com/api/docs/)
 
+## Web App Deployment
+
+- Web app is deployed on Github pages [View](https://atuljava74.github.io/image_gallery_web_demo/)
 
