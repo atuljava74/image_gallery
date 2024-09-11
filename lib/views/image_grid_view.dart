@@ -1,9 +1,17 @@
+import 'dart:io';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:cached_network_image/cached_network_image.dart'; // Import the cached network image package
+import '../animation/fade_route.dart';
+import '../models/image_model.dart';
 import '../providers/image_provider.dart';
 import 'full_screen_view.dart';
 
 class ImageGridView extends StatefulWidget {
+  const ImageGridView({Key? key}) : super(key: key);
+
   @override
   _ImageGridViewState createState() => _ImageGridViewState();
 }
@@ -14,16 +22,17 @@ class _ImageGridViewState extends State<ImageGridView> {
   @override
   void initState() {
     super.initState();
-    _scrollController = ScrollController()
-      ..addListener(() {
-        if (_scrollController.position.pixels ==
-            _scrollController.position.maxScrollExtent) {
-          final imageProvider = Provider.of<PixabayImageProvider>(context, listen: false);
-          if (!imageProvider.isLoading) {
-            imageProvider.loadMore();
-          }
+    _scrollController = ScrollController();
+
+    // Add listener to the ScrollController
+    _scrollController.addListener(() {
+      if (_scrollController.position.pixels == _scrollController.position.maxScrollExtent) {
+        final imageProvider = Provider.of<PixabayImageProvider>(context, listen: false);
+        if (!imageProvider.isLoading) {
+          imageProvider.loadMore();
         }
-      });
+      }
+    });
   }
 
   @override
@@ -32,127 +41,109 @@ class _ImageGridViewState extends State<ImageGridView> {
     super.dispose();
   }
 
+  // Determine which URL to use based on platform and screen size
+  String getImageUrl(BuildContext context, ImageModel image) {
+    double screenWidth = MediaQuery.of(context).size.width;
+
+    if (kIsWeb) {
+      // Web logic
+      if (screenWidth < 600) {
+        return image.previewURL; // For small web screens
+      } else {
+        return image.largeImageURL; // For larger web screens
+      }
+    } else if (Platform.isAndroid || Platform.isIOS) {
+      // Mobile logic
+      if (screenWidth < 600) {
+        return image.previewURL; // Small mobile screens
+      } else {
+        return image.webformatURL; // Larger mobile screens
+      }
+    }
+    return image.previewURL; // Fallback
+  }
+
   @override
   Widget build(BuildContext context) {
     final imageProvider = Provider.of<PixabayImageProvider>(context);
-
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Colors.white, // Set AppBar background to white
-        elevation: 2.0,
         title: Row(
           children: [
             Image.asset(
-              'assets/logo.png',
-              height: 40, // Adjust the height as needed for your logo
+              'assets/logo.png', // Your logo from assets
+              height: 40,
             ),
-            SizedBox(width: 10),
-            const Text(
+            const SizedBox(width: 10),
+            Text(
               'Image Gallery',
               style: TextStyle(
-                color: Colors.black, // Set text color to black
-                fontFamily: 'Cursive', // Use a custom font family
-                fontSize: 24, // Adjust the font size for a stylish look
+                fontFamily: 'YourStylishFont', // Customize your font here
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
-        centerTitle: false, // Align title to the left
-        bottom: PreferredSize(
-          preferredSize: Size.fromHeight(60.0),
-          child: Padding(
+      ),
+      body: Column(
+        children: [
+          Padding(
             padding: const EdgeInsets.all(8.0),
-            child: Container(
-              decoration: BoxDecoration(
-                color: Colors.grey[200], // Set background color of search bar
-                borderRadius: BorderRadius.circular(30), // Rounded corners
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.5),
-                    spreadRadius: 2,
-                    blurRadius: 5,
-                  ),
-                ],
-              ),
-              child: TextField(
-                onChanged: (query) {
-                  imageProvider.setQuery(query);
-                },
-                decoration: InputDecoration(
-                  hintText: 'Search images...',
-                  hintStyle: TextStyle(
-                    fontStyle: FontStyle.italic,
-                    color: Colors.grey[600],
-                  ),
-                  border: InputBorder.none,
-                  prefixIcon: Icon(Icons.search, color: Colors.grey[700]),
-                  contentPadding: EdgeInsets.symmetric(vertical: 15),
+            child: TextField(
+              onChanged: (value) {
+                imageProvider.setQuery(value); // Update query and fetch images
+              },
+              decoration: InputDecoration(
+                hintText: 'Search Images...',
+                prefixIcon: Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
                 ),
+                filled: true,
+                fillColor: Colors.grey[200],
               ),
             ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        child: imageProvider.isLoading && imageProvider.images.isEmpty
-            ? Center(child: CircularProgressIndicator())
-            : Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: GridView.builder(
-            controller: _scrollController,
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: MediaQuery.of(context).size.width > 600 ? 4 : 2,
-              mainAxisSpacing: 8.0,
-              crossAxisSpacing: 8.0,
-            ),
-            itemCount: imageProvider.images.length,
-            itemBuilder: (context, index) {
-              final image = imageProvider.images[index];
-              return GestureDetector(
-                onTap: () => Navigator.push(
-                  context,
-                  PageRouteBuilder(
-                    pageBuilder: (context, animation, secondaryAnimation) {
-                      return FullScreenView(imageUrl: image.imageUrl);
-                    },
-                    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                      return FadeTransition(
-                        opacity: animation,
-                        child: child,
-                      );
-                    },
-                  ),
-                ),
-                child: Hero(
-                  tag: image.imageUrl,
-                  child: Card(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: Image.network(
-                            image.imageUrl,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return Center(child: Icon(Icons.error));
-                            },
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8.0),
-                          child: Text(
-                            'Likes: ${image.likes}, Views: ${image.views}',
-                            style: TextStyle(fontSize: 14),
-                          ),
-                        ),
-                      ],
+          Expanded(
+            child: GridView.builder(
+              controller: _scrollController, // Assign the ScrollController
+              padding: const EdgeInsets.all(10),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: MediaQuery.of(context).size.width < 600 ? 2 : 4,
+                crossAxisSpacing: 10,
+                mainAxisSpacing: 10,
+                childAspectRatio: 1,
+              ),
+              itemCount: imageProvider.images.length,
+              itemBuilder: (context, index) {
+                final image = imageProvider.images[index];
+                return GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).push(
+                      FadePageRoute(
+                        page: FullScreenImageView(image: image),
+                      ),
+                    );
+                  },
+                  child: GridTile(
+                    footer: GridTileBar(
+                      backgroundColor: Colors.black45,
+                      title: Text('${image.likes} likes'),
+                      subtitle: Text('${image.views} views'),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: getImageUrl(context, image),
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Center(child: CircularProgressIndicator()),
+                      errorWidget: (context, url, error) => Icon(Icons.error),
                     ),
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
