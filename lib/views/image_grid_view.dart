@@ -75,10 +75,10 @@ class _ImageGridViewState extends State<ImageGridView> {
               height: 40,
             ),
             const SizedBox(width: 10),
-            Text(
+            const Text(
               'Image Gallery',
               style: TextStyle(
-                fontFamily: 'YourStylishFont', // Customize your font here
+                fontFamily: 'Cursive', // Customize your font here
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
